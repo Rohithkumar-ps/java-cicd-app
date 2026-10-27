@@ -1,3 +1,4 @@
+
 pipeline {
     agent any
 
@@ -24,7 +25,7 @@ pipeline {
             steps {
                 withSonarQubeEnv('SonarQubeCloud') {
                     sh '''
-                        mvn sonar:sonar \
+                        mvn org.sonarsource.scanner.maven:sonar-maven-plugin:sonar \
                           -Dsonar.organization=rohithkumar-ps \
                           -Dsonar.projectKey=Rohithkumar-ps_java-cicd-app \
                           -Dsonar.host.url=https://sonarcloud.io
