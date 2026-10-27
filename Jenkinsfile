@@ -9,12 +9,13 @@ pipeline {
     }
 
     environment {
-        AWS_REGION       = 'ap-southeast-2'
-        AWS_ACCOUNT_ID   = '952837501939'
-        ECR_REPOSITORY   = 'java-cicd-app'
-        ECR_REGISTRY     = '952837501939.dkr.ecr.ap-southeast-2.amazonaws.com'
-        SONAR_PROJECT_KEY = 'Rohithkumar-ps_java-cicd-app'
+        AWS_REGION         = 'ap-southeast-2'
+        AWS_ACCOUNT_ID     = '952837501939'
+        ECR_REPOSITORY     = 'java-cicd-app'
+        ECR_REGISTRY       = '952837501939.dkr.ecr.ap-southeast-2.amazonaws.com'
+        SONAR_PROJECT_KEY  = 'Rohithkumar-ps_java-cicd-app'
         SONAR_ORGANIZATION = 'rohithkumar-ps'
+        IMAGE_TAG          = "${BUILD_NUMBER}"
     }
 
     stages {
@@ -26,8 +27,13 @@ pipeline {
 
         stage('Build and Test') {
             steps {
-                sh 'java -version'
-                sh 'mvn clean verify'
+                sh '''
+                    set -eu
+                    java -version
+                    mvn clean verify
+                    test -f target/java-cicd-app-1.0.0.jar
+                    test -f target/site/jacoco/jacoco.xml
+                '''
             }
         }
 
@@ -35,7 +41,8 @@ pipeline {
             steps {
                 withSonarQubeEnv('SonarQubeCloud') {
                     sh '''
-                        mvn sonar:sonar \
+                        set -eu
+                        mvn org.sonarsource.scanner.maven:sonar-maven-plugin:5.8.0.7211:sonar \
                           -Dsonar.projectKey="$SONAR_PROJECT_KEY" \
                           -Dsonar.organization="$SONAR_ORGANIZATION"
                     '''
@@ -54,8 +61,9 @@ pipeline {
         stage('Docker Build') {
             steps {
                 sh '''
+                    set -eu
                     docker build \
-                      -t "$ECR_REGISTRY/$ECR_REPOSITORY:$BUILD_NUMBER" \
+                      -t "$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG" \
                       .
                 '''
             }
@@ -64,13 +72,14 @@ pipeline {
         stage('Trivy Security Scan') {
             steps {
                 sh '''
+                    set -eu
                     trivy --version
 
                     trivy image \
                       --scanners vuln \
                       --severity HIGH,CRITICAL \
                       --exit-code 1 \
-                      "$ECR_REGISTRY/$ECR_REPOSITORY:$BUILD_NUMBER"
+                      "$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG"
                 '''
             }
         }
@@ -89,7 +98,7 @@ pipeline {
                       --password-stdin "$ECR_REGISTRY"
 
                     docker push \
-                      "$ECR_REGISTRY/$ECR_REPOSITORY:$BUILD_NUMBER"
+                      "$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG"
                 '''
             }
         }
@@ -97,11 +106,11 @@ pipeline {
 
     post {
         success {
-            echo 'Pipeline successful: build, tests, SonarQube Quality Gate, Docker, Trivy and ECR push completed.'
+            echo 'SUCCESS: Build, tests, SonarQube Quality Gate, Docker build, Trivy scan and ECR push completed.'
         }
 
         failure {
-            echo 'Pipeline failed. Check the stage logs to identify the issue.'
+            echo 'FAILURE: Check the Console Output for the failed stage.'
         }
 
         always {
