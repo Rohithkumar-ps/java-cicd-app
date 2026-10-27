@@ -19,11 +19,24 @@ pipeline {
                 sh 'mvn clean verify'
             }
         }
+
+        stage('SonarCloud Analysis') {
+            steps {
+                withSonarQubeEnv('SonarQubeCloud') {
+                    sh '''
+                        mvn sonar:sonar \
+                          -Dsonar.organization=rohithkumar-ps \
+                          -Dsonar.projectKey=Rohithkumar-ps_java-cicd-app \
+                          -Dsonar.host.url=https://sonarcloud.io
+                    '''
+                }
+            }
+        }
     }
 
     post {
         success {
-            echo 'Java build and tests completed successfully.'
+            echo 'Build, tests, and SonarCloud analysis completed successfully.'
         }
         failure {
             echo 'Pipeline failed. Check the stage logs.'
