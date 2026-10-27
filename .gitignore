@@ -1,0 +1,5 @@
+target/
+pom.xml.backup
+.idea/
+*.iml
+*.log
